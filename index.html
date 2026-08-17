@@ -449,15 +449,6 @@
             contain: layout style paint; 
         }
         .message.user { flex-direction: row-reverse; }
-        .message .avatar {
-            width: 32px; height: 32px; min-width: 32px; min-height: 32px; flex: 0 0 32px;
-            border-radius: 50%; background: var(--primary); display: flex; align-items: center;
-            justify-content: center; color: white; font-weight: 600; font-size: 0.9rem;
-            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin-top: 2px;
-        }
-        .message .avatar img {
-            width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
-        }
         .message-content {
             flex: 1 1 auto; min-width: 0; max-width: 85%; box-sizing: border-box; display: flex; flex-direction: column;
         }
@@ -1346,11 +1337,6 @@
                 
                 $('#header-avatar').innerHTML = imgHtml;
                 $('#welcome-avatar').innerHTML = imgHtml;
-                
-                // Atualiza também os avatares nas bolhas de chat
-                document.querySelectorAll('.message .avatar').forEach(el => {
-                    el.innerHTML = imgHtml;
-                });
 
                 // Atualiza UI de configurações se estiver aberta
                 const avatarPreview = $('#avatar-preview-img');
@@ -1597,15 +1583,6 @@
                 div.dataset.index = index;
                 div.dataset.id = msg.id || '';
                 div.__rawContent = msg.content; 
-                
-                // Adicionar Avatar para a Lumi
-                if (msg.role === 'assistant') {
-                    const avatarDiv = document.createElement('div');
-                    avatarDiv.className = 'avatar';
-                    const avatar = getLumiAvatar();
-                    avatarDiv.innerHTML = `<img src="${avatar}" alt="Avatar" onerror="handleAvatarError(this)">`;
-                    div.appendChild(avatarDiv);
-                }
 
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'message-content';
@@ -1889,13 +1866,6 @@
                 
                 const typingDiv = document.createElement('div');
                 typingDiv.className = 'message assistant typing-indicator-container';
-                
-                // Adiciona Avatar ao Indicador de digitação da IA
-                const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'avatar';
-                const avatar = getLumiAvatar();
-                avatarDiv.innerHTML = `<img src="${avatar}" alt="Avatar" onerror="handleAvatarError(this)">`;
-                typingDiv.appendChild(avatarDiv);
 
                 const typingContent = document.createElement('div');
                 typingContent.className = 'message-content';
