@@ -200,6 +200,7 @@
             height: 100%;
             object-fit: cover;
             border-radius: 50%;
+            display: block;
         }
         .header-info {
             flex: 1;
@@ -359,7 +360,7 @@
         }
         .conversation-item .conv-title {
             flex: 1;
-            min-width: 0; /* Para evitar empurrar os botões */
+            min-width: 0; 
             font-size: 0.85rem;
             white-space: nowrap;
             overflow: hidden;
@@ -368,7 +369,6 @@
         .conversation-item .conv-actions {
             display: flex;
             gap: 4px;
-            /* opacity removido para ficar sempre visível como solicitado */
         }
         .conv-actions button {
             background: none;
@@ -538,8 +538,8 @@
 
         /* WELCOME SCREEN */
         #welcome-screen { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--spacing-lg); gap: var(--spacing-md); overflow-y: auto; }
-        .welcome-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; overflow: hidden; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3); transition: background var(--transition-normal); }
-        .welcome-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .welcome-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; overflow: hidden; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3); transition: background var(--transition-normal); border: 2px solid var(--border); }
+        .welcome-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .welcome-title { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
         .welcome-subtitle { color: var(--text-secondary); font-size: 0.9rem; max-width: 260px; }
         .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: var(--spacing-sm); }
@@ -648,6 +648,14 @@
             font-family: inherit; outline: none; transition: border var(--transition-fast);
         }
         .setting-control textarea:focus { border-color: var(--primary); }
+
+        /* Nova prévia do Avatar */
+        .avatar-preview-circle {
+            width: 68px; height: 68px; border-radius: 50%; background: var(--primary);
+            display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: white; font-weight: 600;
+            overflow: hidden; border: 2px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .avatar-preview-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
         
         /* Pickers de Cor */
         .color-picker-wrap {
@@ -824,21 +832,37 @@
                                 <input type="text" id="setting-ai-name" placeholder="Lumi">
                             </div>
                         </div>
-                        <div class="setting-item">
-                            <div class="setting-label">Avatar da IA (URL)</div>
-                            <div class="setting-control">
-                                <input type="text" id="setting-avatar-url" placeholder="https://...">
+                        
+                        <div class="setting-item vertical">
+                            <div class="setting-label">Avatar da IA</div>
+                            
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; margin-top: 8px;">
+                                <!-- Preview e Status -->
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                    <div class="avatar-preview-circle">
+                                        <img id="avatar-preview-img" src="" alt="Preview" onerror="handleAvatarError(this)">
+                                    </div>
+                                    <span id="avatar-status-text" class="setting-desc" style="margin-top: 4px; text-align: center;">Avatar padrão da Lumi</span>
+                                </div>
+                                
+                                <!-- Ações -->
+                                <div style="display: flex; gap: 8px; width: 100%;">
+                                    <label class="file-upload-btn" style="flex: 1; text-align: center; margin: 0;">
+                                        Escolher Imagem
+                                        <input type="file" id="setting-avatar-file" accept="image/*" style="display:none;">
+                                    </label>
+                                    <button class="file-upload-btn" id="restore-avatar-btn" style="flex: 1; text-align: center; margin: 0; background: rgba(255,255,255,0.05);">
+                                        Restaurar Padrão
+                                    </button>
+                                </div>
+
+                                <!-- URL -->
+                                <div class="setting-control" style="width: 100%; margin-top: 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; background: var(--bg);">
+                                    <input type="text" id="setting-avatar-url" placeholder="Ou insira a URL da imagem..." style="text-align: left; width: 100%;">
+                                </div>
                             </div>
                         </div>
-                        <div class="setting-item">
-                            <div class="setting-label">Imagem local</div>
-                            <div class="setting-control">
-                                <label class="file-upload-btn">
-                                    Escolher Imagem
-                                    <input type="file" id="setting-avatar-file" accept="image/*" style="display:none;">
-                                </label>
-                            </div>
-                        </div>
+
                         <div class="setting-item vertical">
                             <div>
                                 <div class="setting-label">Personalidade / Prompt</div>
@@ -912,11 +936,11 @@
                             <div class="setting-label">Tipo de Fundo</div>
                             <div class="setting-control">
                                 <select id="setting-background">
+                                    <option value="image">Imagem Customizada</option>
                                     <option value="gradient">Gradiente Animado</option>
                                     <option value="particles">Partículas</option>
                                     <option value="aurora">Aurora</option>
                                     <option value="solid">Cor Sólida</option>
-                                    <option value="image">Imagem Customizada</option>
                                 </select>
                             </div>
                         </div>
@@ -1094,6 +1118,10 @@
             const STORAGE_KEY = 'lumi_chat_data_v1';
             const SETTINGS_KEY = 'lumi_settings_v1';
 
+            // URLs Oficiais da Lumi
+            const LUMI_DEFAULT_AVATAR = 'https://i.ibb.co/93gtm439/b818b4ef8b0584311031dcf738244050.jpg';
+            const LUMI_DEFAULT_BACKGROUND = 'https://i.ibb.co/FkzrdHRf/a66166ce52672d216c0caf578a0b95dd.jpg';
+            
             const LUMI_DEFAULT_PROMPT = "Você é Lumi, uma inteligência artificial criada e desenvolvida inteiramente por Nativa Modz. Sua personalidade é gentil, educada, objetiva, inteligente, natural e respeitosa. Seja um pouco fria e direta quando a conversa exigir. Não use excesso de emojis, não seja excessivamente íntima, nem infantil, nem artificialmente animada. Dê respostas limpas, organizadas e diretas ao ponto. Se questionada sobre sua origem ou criador, responda naturalmente que foi criada por Nativa Modz.";
 
             let appState = {
@@ -1108,7 +1136,7 @@
                     primaryColor: '#8b5cf6',
                     userColor: '#6d28d9',
                     assistantColor: '#1e1e2f',
-                    background: 'gradient',
+                    background: 'image', // Fundo padrão oficial na inicialização
                     bgOpacity: 0.7,
                     bgBlur: 12,
                     bgSpeed: 1,
@@ -1122,6 +1150,16 @@
                 },
                 isGenerating: false,
                 abortController: null,
+            };
+
+            // Tratamento global de erros para avatares - Cai para imagem oficial e se falhar vai para inicial do nome
+            window.handleAvatarError = function(img) {
+                if (img.src !== LUMI_DEFAULT_AVATAR) {
+                    img.src = LUMI_DEFAULT_AVATAR;
+                } else {
+                    const letter = (appState.settings.aiName || 'Lumi').charAt(0).toUpperCase();
+                    img.outerHTML = letter;
+                }
             };
 
             // ==================== DOM CACHE ====================
@@ -1216,6 +1254,12 @@
             }
 
             // ==================== SETTINGS APPLICATION ====================
+            // Lógica Central do Avatar
+            function getLumiAvatar() {
+                const s = appState.settings;
+                return s.avatarDataUrl || s.avatarUrl || LUMI_DEFAULT_AVATAR;
+            }
+
             function applyTheme(theme) {
                 if (theme === 'system') {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1257,14 +1301,18 @@
                 document.documentElement.style.setProperty('--bg-opacity', s.bgOpacity);
                 document.documentElement.style.setProperty('--blur-intensity', s.bgBlur + 'px');
                 document.documentElement.style.setProperty('--bg-speed', s.bgSpeed);
-                if (s.bgImageDataUrl) {
+                
+                if (s.background === 'image') {
+                    // Fallback para o background padrão oficial se nada foi selecionado
+                    const bgImg = s.bgImageDataUrl || LUMI_DEFAULT_BACKGROUND;
                     bgImage.style.display = 'block';
-                    bgImage.style.backgroundImage = `url(${s.bgImageDataUrl})`;
+                    bgImage.style.backgroundImage = `url(${bgImg})`;
                     bgOverlay.style.display = 'block';
                 } else {
                     bgImage.style.display = 'none';
                     bgOverlay.style.display = 'none';
                 }
+
                 if (s.performance === 'true' || lowPerformanceMode) {
                     bgLayer.style.opacity = '0.4';
                 } else {
@@ -1288,30 +1336,39 @@
                 const name = appState.settings.aiName || 'Lumi';
                 $('#header-name').textContent = name;
                 $('#welcome-title').textContent = name;
-                $('#header-avatar').textContent = name.charAt(0).toUpperCase();
-                $('#welcome-avatar').textContent = name.charAt(0).toUpperCase();
                 document.title = name + ' · Chat IA';
             }
 
             function updateUIAvatar() {
-                const avatar = appState.settings.avatarDataUrl || appState.settings.avatarUrl;
-                const letter = (appState.settings.aiName || 'Lumi').charAt(0).toUpperCase();
+                const avatar = getLumiAvatar();
                 
-                const headerAvatar = $('#header-avatar');
-                const welcomeAvatar = $('#welcome-avatar');
+                const imgHtml = `<img src="${avatar}" alt="Avatar" onerror="handleAvatarError(this)">`;
                 
-                if (avatar) {
-                    headerAvatar.innerHTML = `<img src="${avatar}" alt="Avatar">`;
-                    welcomeAvatar.innerHTML = `<img src="${avatar}" alt="Avatar">`;
-                } else {
-                    headerAvatar.textContent = letter;
-                    welcomeAvatar.textContent = letter;
+                $('#header-avatar').innerHTML = imgHtml;
+                $('#welcome-avatar').innerHTML = imgHtml;
+                
+                // Atualiza também os avatares nas bolhas de chat
+                document.querySelectorAll('.message .avatar').forEach(el => {
+                    el.innerHTML = imgHtml;
+                });
+
+                // Atualiza UI de configurações se estiver aberta
+                const avatarPreview = $('#avatar-preview-img');
+                const avatarStatus = $('#avatar-status-text');
+                
+                if (avatarPreview) {
+                    avatarPreview.src = avatar;
                 }
                 
-                document.querySelectorAll('.message .avatar').forEach(el => {
-                    if (avatar) el.innerHTML = `<img src="${avatar}" alt="Avatar">`;
-                    else el.textContent = letter;
-                });
+                if (avatarStatus) {
+                    if (appState.settings.avatarDataUrl) {
+                        avatarStatus.textContent = 'Avatar personalizado';
+                    } else if (appState.settings.avatarUrl) {
+                        avatarStatus.textContent = 'Avatar por URL';
+                    } else {
+                        avatarStatus.textContent = 'Avatar padrão da Lumi';
+                    }
+                }
             }
 
             function updateUIStatus() {
@@ -1334,16 +1391,14 @@
                 }, 2200);
             }
 
-            // ==================== FUNÇÃO DE COPIAR GLOBAL E FALLBACK ====================
+            // ==================== FUNÇÃO DE COPIAR GLOBAL ====================
             async function copyTextToClipboard(text, btnElement, isMessageBtn = false) {
                 let success = false;
                 try {
-                    // Tenta Clipboard API moderno
                     if (navigator.clipboard && window.isSecureContext) {
                         await navigator.clipboard.writeText(text);
                         success = true;
                     } else {
-                        // Fallback confiável para WebView e dispositivos móveis sem Secure Context
                         const textArea = document.createElement("textarea");
                         textArea.value = text;
                         textArea.style.position = "fixed";
@@ -1439,7 +1494,7 @@
                 return clean.substring(0, 30) + '...';
             }
 
-            // ==================== RENDERING & DIFFING ====================
+            // ==================== RENDERING ====================
             function renderSidebar(filter = '') {
                 conversationList.innerHTML = '';
                 const filtered = appState.conversations.filter(c => {
@@ -1543,6 +1598,15 @@
                 div.dataset.id = msg.id || '';
                 div.__rawContent = msg.content; 
                 
+                // Adicionar Avatar para a Lumi
+                if (msg.role === 'assistant') {
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'avatar';
+                    const avatar = getLumiAvatar();
+                    avatarDiv.innerHTML = `<img src="${avatar}" alt="Avatar" onerror="handleAvatarError(this)">`;
+                    div.appendChild(avatarDiv);
+                }
+
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'message-content';
                 
@@ -1573,7 +1637,6 @@
                     copyBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copiar</span>';
                     copyBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        // Utiliza a função global para garantir compatibilidade
                         copyTextToClipboard(msg.content, copyBtn, true);
                     });
                     actionsDiv.appendChild(copyBtn);
@@ -1704,7 +1767,6 @@
                 const codeBlocks = [];
                 escaped = escaped.replace(/```(\w*)\n?([\s\S]*?)```/g, function(match, lang, code) {
                     const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-                    // Alterado para envolver o bloco e preservar a barra superior estática
                     codeBlocks.push(`<div class="code-wrapper"><div class="code-header"><button class="copy-code-btn" aria-label="Copiar código"><svg viewBox="0 0 24 24" class="icon" style="width:12px;height:12px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copiar</span></button></div><pre><code>${code}</code></pre></div>`);
                     return placeholder;
                 });
@@ -1797,7 +1859,7 @@
                 }
             }
 
-            // ==================== API E GERENCIAMENTO DE CONTEXTO ====================
+            // ==================== API E GERENCIAMENTO ====================
             async function requestAIResponse(text, messageIndex) {
                 if (appState.isGenerating) return;
                 appState.isGenerating = true;
@@ -1809,7 +1871,6 @@
                 
                 let isNewMessage = false;
 
-                // Salva a mensagem se for nova
                 if (messageIndex === undefined || !conv.messages[messageIndex]) {
                     conv.messages.push({
                         id: generateId(),
@@ -1829,6 +1890,13 @@
                 const typingDiv = document.createElement('div');
                 typingDiv.className = 'message assistant typing-indicator-container';
                 
+                // Adiciona Avatar ao Indicador de digitação da IA
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'avatar';
+                const avatar = getLumiAvatar();
+                avatarDiv.innerHTML = `<img src="${avatar}" alt="Avatar" onerror="handleAvatarError(this)">`;
+                typingDiv.appendChild(avatarDiv);
+
                 const typingContent = document.createElement('div');
                 typingContent.className = 'message-content';
                 
@@ -1842,13 +1910,9 @@
                 messagesEl.appendChild(typingDiv);
                 scrollToBottom(true);
                 
-                // --- CONSTRUÇÃO DA MEMÓRIA/CONTEXTO ---
                 let basePrompt = appState.settings.prompt || LUMI_DEFAULT_PROMPT;
                 let contextString = "";
                 
-                // Determina até que ponto da conversa pegar o histórico.
-                // Se for nova mensagem, pega tudo antes da última (que acabou de ser inserida).
-                // Se for edição, pega tudo antes da mensagem sendo editada.
                 const targetUserIndex = (messageIndex !== undefined && !isNewMessage) 
                     ? messageIndex 
                     : conv.messages.length - 1;
@@ -1858,25 +1922,21 @@
                 if (historyMessages.length > 0) {
                     let builtHistory = [];
                     let currentLen = 0;
-                    
-                    // Limites de segurança da API e performance
-                    const MAX_CONTEXT_LENGTH = 3000; // ~3000 caracteres
-                    const MAX_TURNS = 20;            // Últimas 20 interações
+                    const MAX_CONTEXT_LENGTH = 3000; 
+                    const MAX_TURNS = 20;
 
-                    // Lendo as mensagens de trás para frente (mais recentes primeiro)
                     for (let i = historyMessages.length - 1; i >= Math.max(0, historyMessages.length - MAX_TURNS); i--) {
                         const msg = historyMessages[i];
-                        // Ignora mensagens com erro ou vazias
                         if (msg.isError || !msg.content) continue;
                         
                         const roleName = msg.role === 'user' ? 'Usuário' : 'Lumi';
                         const msgText = `${roleName}: ${msg.content}\n`;
                         
                         if (currentLen + msgText.length > MAX_CONTEXT_LENGTH) {
-                            break; // Se o limite de caracteres estourar, não insere mais histórico antigo
+                            break; 
                         }
                         
-                        builtHistory.unshift(msgText); // Insere no começo do array (mantendo a ordem cronológica)
+                        builtHistory.unshift(msgText);
                         currentLen += msgText.length;
                     }
 
@@ -1888,10 +1948,7 @@
                     }
                 }
 
-                // Junta o prompt original + o histórico montado
                 const finalPrompt = basePrompt + "\n\n" + contextString;
-                
-                // ----------------------------------------
                 
                 const url = `https://api.skylen.my.id/api/luminai?text=${encodeURIComponent(text)}&prompt=${encodeURIComponent(finalPrompt)}`;
                 
@@ -2005,20 +2062,44 @@
                 $('#setting-animations').value = s.animations;
                 $('#setting-performance').value = s.performance;
                 applyColors(); 
+                updateUIAvatar(); // Força a atualização do preview na tela
             }
 
             function setupSettingsListeners() {
                 $('#setting-ai-name').addEventListener('input', (e) => { appState.settings.aiName = e.target.value || 'Lumi'; updateUIName(); saveSettings(); });
                 $('#setting-prompt').addEventListener('change', (e) => { appState.settings.prompt = e.target.value || LUMI_DEFAULT_PROMPT; saveSettings(); showToast('Personalidade atualizada', 'success'); });
-                $('#setting-avatar-url').addEventListener('change', (e) => { appState.settings.avatarUrl = e.target.value; updateUIAvatar(); saveSettings(); });
+                
+                // Comportamento do Avatar com as regras de precedência
+                $('#setting-avatar-url').addEventListener('input', (e) => { 
+                    appState.settings.avatarUrl = e.target.value; 
+                    appState.settings.avatarDataUrl = ''; // Limpa envio local
+                    updateUIAvatar(); 
+                    saveSettings(); 
+                });
                 $('#setting-avatar-file').addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file && file.type.startsWith('image/')) {
                         const reader = new FileReader();
-                        reader.onload = (ev) => { appState.settings.avatarDataUrl = ev.target.result; updateUIAvatar(); saveSettings(); showToast('Avatar atualizado', 'success'); };
+                        reader.onload = (ev) => { 
+                            appState.settings.avatarDataUrl = ev.target.result; 
+                            appState.settings.avatarUrl = ''; // Limpa URL customizada
+                            $('#setting-avatar-url').value = ''; 
+                            updateUIAvatar(); 
+                            saveSettings(); 
+                            showToast('Avatar atualizado', 'success'); 
+                        };
                         reader.readAsDataURL(file);
                     }
                 });
+                $('#restore-avatar-btn').addEventListener('click', () => {
+                    appState.settings.avatarDataUrl = '';
+                    appState.settings.avatarUrl = '';
+                    $('#setting-avatar-url').value = '';
+                    updateUIAvatar();
+                    saveSettings();
+                    showToast('Avatar restaurado para o padrão', 'success');
+                });
+
                 $('#setting-theme').addEventListener('change', (e) => { appState.settings.theme = e.target.value; applyTheme(appState.settings.theme); saveSettings(); });
                 $('#setting-primary-color').addEventListener('input', (e) => { appState.settings.primaryColor = e.target.value; applyColors(); saveSettings(); });
                 $('#setting-user-color').addEventListener('input', (e) => { appState.settings.userColor = e.target.value; applyColors(); saveSettings(); });
@@ -2075,7 +2156,7 @@
                         appState.settings = { ...appState.settings, 
                             aiName: 'Lumi', prompt: LUMI_DEFAULT_PROMPT, avatarUrl: '', avatarDataUrl: '',
                             theme: 'dark', primaryColor: '#8b5cf6', userColor: '#6d28d9', assistantColor: '#1e1e2f',
-                            background: 'gradient', bgOpacity: 0.7, bgBlur: 12, bgSpeed: 1, bgImageDataUrl: '',
+                            background: 'image', bgOpacity: 0.7, bgBlur: 12, bgSpeed: 1, bgImageDataUrl: '',
                             fontSize: '0.95rem', density: '1', showTime: 'true', markdown: 'true',
                             animations: 'true', performance: 'false' };
                         saveSettings(); applyAllSettings(); loadSettingsIntoUI(); showToast('Configurações restauradas', 'success');
@@ -2260,7 +2341,6 @@
                     }
                 });
                 
-                // Alterado para permitir novas linhas com apenas o Enter, ou enviar com Ctrl/Cmd + Enter
                 inputEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { 
                         e.preventDefault(); 
@@ -2282,7 +2362,6 @@
                     });
                 });
 
-                // Captura os cliques no botão de copiar dentro dos blocos de código
                 messagesEl.addEventListener('click', (e) => {
                     const copyBtn = e.target.closest('.copy-code-btn');
                     if (copyBtn) {
@@ -2291,7 +2370,6 @@
                         if (wrapper) {
                             const codeElement = wrapper.querySelector('code');
                             if (codeElement) {
-                                // Envia apenas o texto interno contido na tag <code> para o clipboard
                                 copyTextToClipboard(codeElement.textContent, copyBtn, false);
                             }
                         }
@@ -2371,4 +2449,4 @@
         })();
     </script>
 </body>
-    </html>
+</html>
