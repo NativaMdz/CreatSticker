@@ -506,13 +506,17 @@
         .markdown-content li { margin: 3px 0; line-height: 1.4; }
         .markdown-content hr { border: none; height: 1px; background: var(--border); margin: 12px 0; }
         .markdown-content code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-family: 'Fira Code', monospace; }
-        .markdown-content pre { background: #0d0d1a; padding: 12px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0; border: 1px solid var(--border); position: relative; }
-        .markdown-content pre code { background: transparent; padding: 0; font-size: 0.8rem; display: block; }
-        .copy-code-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.08); border: none; color: var(--text-secondary); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 0.7rem; transition: background var(--transition-fast), color var(--transition-fast); }
-        .copy-code-btn:active { background: rgba(255,255,255,0.2); color: white; }
         .markdown-content blockquote { border-left: 3px solid var(--primary); padding-left: 12px; margin: 8px 0; color: var(--text-secondary); }
         .markdown-content table { border-collapse: collapse; width: 100%; margin: 8px 0; }
         .markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 0.85rem; }
+        
+        /* Nova Estrutura Blocos de Código */
+        .code-wrapper { margin: 8px 0; background: #0d0d1a; border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; overflow: hidden; }
+        .code-header { display: flex; justify-content: flex-end; padding: 6px 8px; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); }
+        .copy-code-btn { background: transparent; border: none; color: var(--text-secondary); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.75rem; transition: background var(--transition-fast), color var(--transition-fast); display: flex; align-items: center; gap: 4px; }
+        .copy-code-btn:active { background: rgba(255,255,255,0.1); color: white; }
+        .markdown-content pre { background: transparent; padding: 12px; border-radius: 0; overflow-x: auto; margin: 0; border: none; position: relative; }
+        .markdown-content pre code { background: transparent; padding: 0; font-size: 0.8rem; display: block; }
 
         /* Typing indicator */
         .typing-indicator-bubble { display: flex; align-items: center; gap: 4px; padding: 12px 16px; }
@@ -1330,6 +1334,47 @@
                 }, 2200);
             }
 
+            // ==================== FUNÇÃO DE COPIAR GLOBAL E FALLBACK ====================
+            async function copyTextToClipboard(text, btnElement, isMessageBtn = false) {
+                let success = false;
+                try {
+                    // Tenta Clipboard API moderno
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                        success = true;
+                    } else {
+                        // Fallback confiável para WebView e dispositivos móveis sem Secure Context
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-999999px";
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        success = true;
+                    }
+                } catch (err) {
+                    console.error('Falha ao copiar:', err);
+                }
+
+                if (success) {
+                    if (btnElement) {
+                        const originalHTML = btnElement.innerHTML;
+                        if (isMessageBtn) {
+                            btnElement.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><path d="M20 6 9 17l-5-5"/></svg><span>Copiado</span>';
+                        } else {
+                            btnElement.innerHTML = '<svg viewBox="0 0 24 24" class="icon" style="width:12px;height:12px;"><path d="M20 6 9 17l-5-5"/></svg><span>Copiado</span>';
+                        }
+                        setTimeout(() => btnElement.innerHTML = originalHTML, 2000);
+                    }
+                    showToast('Copiado', 'success');
+                } else {
+                    showToast('Erro ao copiar', 'error');
+                }
+            }
+
             // ==================== CONVERSATIONS ====================
             function createConversation() {
                 const newConv = {
@@ -1528,11 +1573,8 @@
                     copyBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copiar</span>';
                     copyBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        navigator.clipboard.writeText(msg.content).then(() => {
-                            copyBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><path d="M20 6 9 17l-5-5"/></svg><span>Copiado</span>';
-                            setTimeout(() => copyBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copiar</span>', 1500);
-                            showToast('Mensagem copiada', 'success');
-                        });
+                        // Utiliza a função global para garantir compatibilidade
+                        copyTextToClipboard(msg.content, copyBtn, true);
                     });
                     actionsDiv.appendChild(copyBtn);
                     
@@ -1662,7 +1704,8 @@
                 const codeBlocks = [];
                 escaped = escaped.replace(/```(\w*)\n?([\s\S]*?)```/g, function(match, lang, code) {
                     const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-                    codeBlocks.push(`<pre><button class="copy-code-btn" style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" class="icon" style="width:12px;height:12px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copiar</button><code>${code}</code></pre>`);
+                    // Alterado para envolver o bloco e preservar a barra superior estática
+                    codeBlocks.push(`<div class="code-wrapper"><div class="code-header"><button class="copy-code-btn" aria-label="Copiar código"><svg viewBox="0 0 24 24" class="icon" style="width:12px;height:12px;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copiar</span></button></div><pre><code>${code}</code></pre></div>`);
                     return placeholder;
                 });
                 const inlineCodes = [];
@@ -2217,9 +2260,14 @@
                     }
                 });
                 
+                // Alterado para permitir novas linhas com apenas o Enter, ou enviar com Ctrl/Cmd + Enter
                 inputEl.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { 
+                        e.preventDefault(); 
+                        sendMessage(); 
+                    }
                 });
+
                 sendBtn.addEventListener('click', sendMessage);
                 stopBtn.addEventListener('click', () => {
                     if (appState.abortController) { appState.abortController.abort(); showToast('Requisição cancelada', 'info'); }
@@ -2232,6 +2280,22 @@
                         inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
                         inputEl.focus(); sendMessage();
                     });
+                });
+
+                // Captura os cliques no botão de copiar dentro dos blocos de código
+                messagesEl.addEventListener('click', (e) => {
+                    const copyBtn = e.target.closest('.copy-code-btn');
+                    if (copyBtn) {
+                        e.stopPropagation();
+                        const wrapper = copyBtn.closest('.code-wrapper');
+                        if (wrapper) {
+                            const codeElement = wrapper.querySelector('code');
+                            if (codeElement) {
+                                // Envia apenas o texto interno contido na tag <code> para o clipboard
+                                copyTextToClipboard(codeElement.textContent, copyBtn, false);
+                            }
+                        }
+                    }
                 });
                 
                 let scrollTicking = false;
@@ -2307,4 +2371,4 @@
         })();
     </script>
 </body>
-</html>
+    </html>
