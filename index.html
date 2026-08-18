@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>Lumi · Chat IA</title>
+    <!-- PDF.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
             --primary: #8b5cf6;
@@ -31,6 +33,7 @@
             --blur-intensity: 20px;
             --bg-opacity: 0.7;
             --bg-speed: 1;
+            --danger: #ef4444;
         }
 
         [data-theme="light"] {
@@ -98,6 +101,8 @@
         .conv-actions button .icon { width: 14px; height: 14px; }
         .msg-actions button .icon { width: 14px; height: 14px; }
         .action-icon .icon { width: 18px; height: 18px; }
+        .attach-icon .icon { width: 20px; height: 20px; }
+        .attachment-icon .icon { width: 16px; height: 16px; }
 
         /* Background layers */
         #bg-layer {
@@ -557,12 +562,145 @@
             line-height: 1.4; transition: border var(--transition-fast), background var(--transition-normal);
         }
         #message-input:focus { border-color: var(--primary); }
+        
+        /* Botão de Anexo */
+        #attach-btn {
+            width: 44px; height: 44px; border-radius: 50%; background: var(--bg); color: var(--text-secondary);
+            border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+            flex-shrink: 0;
+        }
+        #attach-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.1); color: var(--primary); }
+        #attach-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
         #send-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); flex-shrink: 0; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
         #send-btn:active { transform: scale(0.9); background: var(--secondary); }
         #send-btn:disabled { opacity: 0.5; pointer-events: none; }
         #stop-btn { display: none; width: 44px; height: 44px; border-radius: 50%; background: #ef4444; color: white; border: none; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background var(--transition-fast); }
         #stop-btn.visible { display: flex; }
 
+        /* ====================================================
+           SISTEMA DE ANEXOS
+           ==================================================== */
+        /* Menu de Anexos */
+        #attachment-menu {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 16px;
+            background: var(--surface-solid);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 20;
+            display: none;
+            min-width: 200px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        #attachment-menu.open { display: block; animation: fadeInUp 0.2s ease; }
+        .attachment-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            width: 100%;
+        }
+        .attachment-menu-item:active { background: rgba(255,255,255,0.06); }
+        .attachment-menu-item .attachment-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(139, 92, 246, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        /* Preview de Anexos */
+        #attachment-preview {
+            padding: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        #attachment-preview:empty { display: none; }
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            max-width: 100%;
+            animation: fadeInUp 0.2s ease;
+            position: relative;
+        }
+        .attachment-icon-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: rgba(139, 92, 246, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--primary);
+        }
+        .attachment-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .attachment-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .attachment-meta {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .attachment-status {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .attachment-status.ready { color: #4ade80; }
+        .attachment-status.error { color: var(--danger); }
+        .attachment-status.processing { color: #fbbf24; }
+        .attachment-remove-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: color var(--transition-fast);
+        }
+        .attachment-remove-btn:active { color: var(--danger); }
 
         /* ====================================================
            NOVO PAINEL DE CONFIGURAÇÕES ORGANIZADO (UI/UX)
@@ -769,7 +907,23 @@
 
         <!-- Input Area -->
         <div id="input-container">
+            <!-- Preview de Anexos -->
+            <div id="attachment-preview"></div>
+            
+            <!-- Menu de Anexos (Flutuante) -->
+            <div id="attachment-menu">
+                <button class="attachment-menu-item" id="menu-files">
+                    <span class="attachment-icon">
+                        <svg viewBox="0 0 24 24" class="icon"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                    </span>
+                    <span>Arquivos</span>
+                </button>
+            </div>
+            
             <div class="input-row">
+                <button id="attach-btn" aria-label="Anexar arquivo">
+                    <svg viewBox="0 0 24 24" class="icon"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </button>
                 <textarea id="message-input" rows="1" placeholder="Mensagem para Lumi..." aria-label="Mensagem"></textarea>
                 <button id="send-btn" aria-label="Enviar">
                     <svg viewBox="0 0 24 24" class="icon"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
@@ -778,6 +932,9 @@
                     <svg viewBox="0 0 24 24" class="icon"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
                 </button>
             </div>
+            
+            <!-- Input de arquivo oculto -->
+            <input type="file" id="file-input" multiple hidden>
         </div>
     </div>
 
@@ -1108,6 +1265,14 @@
             const STORAGE_VERSION = 1;
             const STORAGE_KEY = 'lumi_chat_data_v1';
             const SETTINGS_KEY = 'lumi_settings_v1';
+            
+            // Constantes para o sistema de anexos
+            const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+            const MAX_TOTAL_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20MB
+            const MAX_EXTRACTED_TEXT = 50000; // 50KB de texto extraído
+            const ATTACHMENT_DB_NAME = 'lumi_attachments_db';
+            const ATTACHMENT_DB_VERSION = 1;
+            const ATTACHMENT_STORE_NAME = 'attachments';
 
             // URLs Oficiais da Lumi
             const LUMI_DEFAULT_AVATAR = 'https://i.ibb.co/93gtm439/b818b4ef8b0584311031dcf738244050.jpg';
@@ -1127,7 +1292,7 @@
                     primaryColor: '#8b5cf6',
                     userColor: '#6d28d9',
                     assistantColor: '#1e1e2f',
-                    background: 'image', // Fundo padrão oficial na inicialização
+                    background: 'image',
                     bgOpacity: 0.7,
                     bgBlur: 12,
                     bgSpeed: 1,
@@ -1141,9 +1306,11 @@
                 },
                 isGenerating: false,
                 abortController: null,
+                pendingAttachments: [], // Anexos aguardando envio
+                attachmentsDB: null, // Referência ao IndexedDB
             };
 
-            // Tratamento global de erros para avatares - Cai para imagem oficial e se falhar vai para inicial do nome
+            // Tratamento global de erros para avatares
             window.handleAvatarError = function(img) {
                 if (img.src !== LUMI_DEFAULT_AVATAR) {
                     img.src = LUMI_DEFAULT_AVATAR;
@@ -1174,6 +1341,11 @@
             const bgImage = $('#bg-image');
             const bgOverlay = $('#bg-overlay');
             const bgLayer = $('#bg-layer');
+            const attachBtn = $('#attach-btn');
+            const attachmentMenu = $('#attachment-menu');
+            const attachmentPreview = $('#attachment-preview');
+            const fileInput = $('#file-input');
+            const menuFiles = $('#menu-files');
 
             let bgAnimationFrame = null;
             let bgAnimationType = 'gradient';
@@ -1186,6 +1358,94 @@
             let lowPerformanceMode = false;
             let cw = window.innerWidth;
             let ch = window.innerHeight;
+
+            // ==================== INDEXEDDB PARA ANEXOS ====================
+            function initAttachmentsDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(ATTACHMENT_DB_NAME, ATTACHMENT_DB_VERSION);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(ATTACHMENT_STORE_NAME)) {
+                            const store = db.createObjectStore(ATTACHMENT_STORE_NAME, { keyPath: 'id' });
+                            store.createIndex('conversationId', 'conversationId', { unique: false });
+                            store.createIndex('messageId', 'messageId', { unique: false });
+                            store.createIndex('timestamp', 'timestamp', { unique: false });
+                        }
+                    };
+                    
+                    request.onsuccess = (event) => {
+                        appState.attachmentsDB = event.target.result;
+                        resolve(appState.attachmentsDB);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Erro ao abrir IndexedDB:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+
+            async function saveAttachmentToDB(attachment) {
+                if (!appState.attachmentsDB) {
+                    await initAttachmentsDB();
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const tx = appState.attachmentsDB.transaction(ATTACHMENT_STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(ATTACHMENT_STORE_NAME);
+                    const request = store.put(attachment);
+                    
+                    request.onsuccess = () => resolve(attachment.id);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function getAttachmentFromDB(id) {
+                if (!appState.attachmentsDB) {
+                    await initAttachmentsDB();
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const tx = appState.attachmentsDB.transaction(ATTACHMENT_STORE_NAME, 'readonly');
+                    const store = tx.objectStore(ATTACHMENT_STORE_NAME);
+                    const request = store.get(id);
+                    
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function deleteAttachmentFromDB(id) {
+                if (!appState.attachmentsDB) {
+                    await initAttachmentsDB();
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const tx = appState.attachmentsDB.transaction(ATTACHMENT_STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(ATTACHMENT_STORE_NAME);
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function getAttachmentsByMessageId(messageId) {
+                if (!appState.attachmentsDB) {
+                    await initAttachmentsDB();
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const tx = appState.attachmentsDB.transaction(ATTACHMENT_STORE_NAME, 'readonly');
+                    const store = tx.objectStore(ATTACHMENT_STORE_NAME);
+                    const index = store.index('messageId');
+                    const request = index.getAll(messageId);
+                    
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => reject(request.error);
+                });
+            }
 
             // ==================== STORAGE FUNCTIONS ====================
             function safeLoad(key, fallback) {
@@ -1245,7 +1505,6 @@
             }
 
             // ==================== SETTINGS APPLICATION ====================
-            // Lógica Central do Avatar
             function getLumiAvatar() {
                 const s = appState.settings;
                 return s.avatarDataUrl || s.avatarUrl || LUMI_DEFAULT_AVATAR;
@@ -1294,7 +1553,6 @@
                 document.documentElement.style.setProperty('--bg-speed', s.bgSpeed);
                 
                 if (s.background === 'image') {
-                    // Fallback para o background padrão oficial se nada foi selecionado
                     const bgImg = s.bgImageDataUrl || LUMI_DEFAULT_BACKGROUND;
                     bgImage.style.display = 'block';
                     bgImage.style.backgroundImage = `url(${bgImg})`;
@@ -1338,7 +1596,6 @@
                 $('#header-avatar').innerHTML = imgHtml;
                 $('#welcome-avatar').innerHTML = imgHtml;
 
-                // Atualiza UI de configurações se estiver aberta
                 const avatarPreview = $('#avatar-preview-img');
                 const avatarStatus = $('#avatar-status-text');
                 
@@ -1603,6 +1860,25 @@
                 bubbleDiv.appendChild(textSpan);
                 contentDiv.appendChild(bubbleDiv);
                 
+                // Adiciona preview de anexos se existirem
+                if (msg.attachments && msg.attachments.length > 0) {
+                    const attachDiv = document.createElement('div');
+                    attachDiv.className = 'message-attachments';
+                    attachDiv.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;';
+                    
+                    msg.attachments.forEach(att => {
+                        const chip = document.createElement('div');
+                        chip.style.cssText = 'display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 4px 10px; font-size: 0.75rem;';
+                        chip.innerHTML = `
+                            <svg viewBox="0 0 24 24" class="icon" style="width:12px;height:12px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                            <span>${escapeHtml(att.name)}</span>
+                        `;
+                        attachDiv.appendChild(chip);
+                    });
+                    
+                    contentDiv.appendChild(attachDiv);
+                }
+                
                 const metaDiv = document.createElement('div');
                 metaDiv.className = 'message-meta';
                 
@@ -1836,8 +2112,323 @@
                 }
             }
 
+            // ==================== SISTEMA DE ANEXOS ====================
+            function openAttachmentMenu() {
+                attachmentMenu.classList.add('open');
+                attachBtn.classList.add('active');
+            }
+
+            function closeAttachmentMenu() {
+                attachmentMenu.classList.remove('open');
+                attachBtn.classList.remove('active');
+            }
+
+            function toggleAttachmentMenu() {
+                if (attachmentMenu.classList.contains('open')) {
+                    closeAttachmentMenu();
+                } else {
+                    openAttachmentMenu();
+                }
+            }
+
+            function openFilePicker() {
+                closeAttachmentMenu();
+                fileInput.click();
+            }
+
+            function getFileType(file) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                const textExtensions = [
+                    'txt', 'pdf', 'json', 'html', 'htm', 'js', 'jsx', 'ts', 'tsx', 'css', 'scss',
+                    'md', 'csv', 'xml', 'yaml', 'yml', 'sql', 'py', 'java', 'php', 'c', 'cpp', 'h',
+                    'hpp', 'cs', 'go', 'rs', 'sh', 'bat', 'log', 'ini', 'conf', 'env', 'gitignore',
+                    'dockerfile', 'vue', 'svelte', 'astro', 'swift', 'kt', 'rb', 'pl', 'lua', 'r',
+                    'dart', 'ex', 'exs', 'erl', 'hrl', 'fs', 'fsx', 'fsi', 'clj', 'cljs', 'cljc',
+                ];
+                
+                const binaryExtensions = [
+                    'exe', 'apk', 'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'mp4', 'mp3', 'wav',
+                    'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm', 'ogg', 'flac', 'aac', 'jpg', 'jpeg',
+                    'png', 'gif', 'bmp', 'svg', 'webp', 'ico', 'tiff', 'psd', 'ai', 'sketch', 'fig',
+                ];
+                
+                if (ext === 'pdf') return 'pdf';
+                if (textExtensions.includes(ext)) return 'text';
+                if (binaryExtensions.includes(ext)) return 'binary';
+                
+                // Fallback: tenta detectar por MIME type
+                if (file.type.startsWith('text/')) return 'text';
+                if (file.type === 'application/pdf') return 'pdf';
+                if (file.type.startsWith('image/')) return 'binary';
+                if (file.type.startsWith('video/')) return 'binary';
+                if (file.type.startsWith('audio/')) return 'binary';
+                
+                // Se não conseguiu identificar, tenta como texto se for pequeno
+                return 'text';
+            }
+
+            async function readTextFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(new Error('Erro ao ler arquivo'));
+                    reader.readAsText(file, 'UTF-8');
+                });
+            }
+
+            async function extractPdfText(file) {
+                try {
+                    const pdfjsLib = window.pdfjsLib;
+                    if (!pdfjsLib) {
+                        throw new Error('PDF.js não carregado');
+                    }
+                    
+                    // Configura o worker via CDN
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n\n';
+                        
+                        if (fullText.length > MAX_EXTRACTED_TEXT) {
+                            fullText = fullText.substring(0, MAX_EXTRACTED_TEXT) + '\n... (texto truncado)';
+                            break;
+                        }
+                    }
+                    
+                    if (!fullText.trim()) {
+                        throw new Error('PDF sem texto extraível');
+                    }
+                    
+                    return fullText.trim();
+                } catch (error) {
+                    console.error('Erro ao extrair PDF:', error);
+                    throw new Error('Não foi possível extrair texto do PDF');
+                }
+            }
+
+            async function prepareAttachment(file) {
+                const attachmentId = generateId();
+                const fileType = getFileType(file);
+                
+                const attachment = {
+                    id: attachmentId,
+                    name: file.name,
+                    size: file.size,
+                    type: fileType,
+                    status: 'processing',
+                    content: null,
+                    error: null,
+                    timestamp: new Date().toISOString(),
+                };
+                
+                // Adiciona aos pendentes
+                appState.pendingAttachments.push(attachment);
+                renderAttachmentPreview();
+                
+                try {
+                    if (fileType === 'binary') {
+                        throw new Error('Tipo de arquivo não suportado');
+                    }
+                    
+                    if (file.size > MAX_FILE_SIZE) {
+                        throw new Error('Arquivo muito grande');
+                    }
+                    
+                    if (fileType === 'pdf') {
+                        attachment.status = 'processing';
+                        attachment.statusText = 'Extraindo PDF...';
+                        renderAttachmentPreview();
+                        attachment.content = await extractPdfText(file);
+                    } else {
+                        attachment.status = 'reading';
+                        attachment.statusText = 'Lendo...';
+                        renderAttachmentPreview();
+                        attachment.content = await readTextFile(file);
+                    }
+                    
+                    if (attachment.content.length > MAX_EXTRACTED_TEXT) {
+                        attachment.content = attachment.content.substring(0, MAX_EXTRACTED_TEXT);
+                    }
+                    
+                    // Validação para JSON
+                    if (file.name.toLowerCase().endsWith('.json')) {
+                        try {
+                            JSON.parse(attachment.content);
+                            attachment.isValidJson = true;
+                        } catch (e) {
+                            attachment.isValidJson = false;
+                            attachment.jsonError = e.message;
+                        }
+                    }
+                    
+                    attachment.status = 'ready';
+                    attachment.statusText = 'Pronto';
+                    attachment.error = null;
+                } catch (error) {
+                    attachment.status = 'error';
+                    attachment.statusText = 'Erro';
+                    attachment.error = error.message;
+                }
+                
+                renderAttachmentPreview();
+                return attachment;
+            }
+
+            function removeAttachment(id) {
+                appState.pendingAttachments = appState.pendingAttachments.filter(a => a.id !== id);
+                renderAttachmentPreview();
+            }
+
+            function clearPendingAttachments() {
+                appState.pendingAttachments = [];
+                renderAttachmentPreview();
+            }
+
+            function renderAttachmentPreview() {
+                attachmentPreview.innerHTML = '';
+                
+                appState.pendingAttachments.forEach(att => {
+                    const item = document.createElement('div');
+                    item.className = 'attachment-item';
+                    
+                    const icon = document.createElement('div');
+                    icon.className = 'attachment-icon-small';
+                    icon.innerHTML = getFileIcon(att);
+                    
+                    const info = document.createElement('div');
+                    info.className = 'attachment-info';
+                    
+                    const name = document.createElement('div');
+                    name.className = 'attachment-name';
+                    name.textContent = att.name;
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'attachment-meta';
+                    meta.textContent = formatFileSize(att.size) + ' • ' + getFileTypeLabel(att);
+                    
+                    info.appendChild(name);
+                    info.appendChild(meta);
+                    
+                    const status = document.createElement('div');
+                    status.className = 'attachment-status ' + att.status;
+                    status.textContent = att.statusText || att.status;
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'attachment-remove-btn';
+                    removeBtn.setAttribute('aria-label', 'Remover anexo');
+                    removeBtn.innerHTML = '<svg viewBox="0 0 24 24" class="icon" style="width:14px;height:14px;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+                    removeBtn.addEventListener('click', () => removeAttachment(att.id));
+                    
+                    item.appendChild(icon);
+                    item.appendChild(info);
+                    item.appendChild(status);
+                    item.appendChild(removeBtn);
+                    
+                    attachmentPreview.appendChild(item);
+                });
+            }
+
+            function getFileIcon(attachment) {
+                if (attachment.type === 'pdf') {
+                    return '<svg viewBox="0 0 24 24" class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>';
+                } else if (attachment.type === 'text') {
+                    return '<svg viewBox="0 0 24 24" class="icon"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>';
+                } else {
+                    return '<svg viewBox="0 0 24 24" class="icon"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+                }
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            function getFileTypeLabel(attachment) {
+                if (attachment.type === 'pdf') return 'PDF';
+                if (attachment.type === 'text') {
+                    const ext = attachment.name.split('.').pop().toLowerCase();
+                    const labels = {
+                        'html': 'HTML', 'htm': 'HTML', 'css': 'CSS', 'js': 'JavaScript',
+                        'jsx': 'React JSX', 'ts': 'TypeScript', 'tsx': 'React TSX',
+                        'json': 'JSON', 'md': 'Markdown', 'py': 'Python', 'java': 'Java',
+                        'php': 'PHP', 'c': 'C', 'cpp': 'C++', 'h': 'C/C++ Header',
+                        'sql': 'SQL', 'xml': 'XML', 'yaml': 'YAML', 'yml': 'YAML',
+                        'csv': 'CSV', 'sh': 'Shell Script', 'bat': 'Batch File',
+                    };
+                    return labels[ext] || ext.toUpperCase();
+                }
+                return 'Arquivo';
+            }
+
+            function buildAttachmentContext(attachments) {
+                if (!attachments || attachments.length === 0) return '';
+                
+                let context = '\n\nARQUIVOS ANEXADOS:\n';
+                attachments.forEach((att, index) => {
+                    if (att.status === 'ready' && att.content) {
+                        context += `\n--- ARQUIVO ${index + 1} ---\n`;
+                        context += `Nome: ${att.name}\n`;
+                        context += `Tipo: ${getFileTypeLabel(att)}\n`;
+                        context += `Tamanho: ${formatFileSize(att.size)}\n`;
+                        
+                        if (att.isValidJson === false) {
+                            context += `\nAVISO: Este JSON aparenta possuir erro de sintaxe.\n`;
+                            if (att.jsonError) {
+                                context += `Erro: ${att.jsonError}\n`;
+                            }
+                        }
+                        
+                        context += `\n--- INÍCIO DO ARQUIVO ---\n`;
+                        context += att.content;
+                        context += `\n--- FIM DO ARQUIVO ---\n`;
+                    }
+                });
+                
+                return context;
+            }
+
+            function getRecentAttachmentsContext(excludeMessageId) {
+                const conv = getCurrentConversation();
+                if (!conv || conv.messages.length === 0) return '';
+                
+                let attachmentContext = '';
+                let attachmentCount = 0;
+                
+                // Procura anexos em mensagens recentes (até 10 mensagens anteriores)
+                const recentMessages = conv.messages.slice(-11, -1).reverse();
+                
+                for (const msg of recentMessages) {
+                    if (msg.attachments && msg.attachments.length > 0 && msg.id !== excludeMessageId) {
+                        for (const attMeta of msg.attachments) {
+                            if (attachmentCount >= 3) break; // Limita a 3 anexos antigos
+                            
+                            // Tenta carregar do IndexedDB
+                            const fullAttachment = getAttachmentFromDB(attMeta.id);
+                            if (fullAttachment && fullAttachment.content) {
+                                attachmentContext += `\n\nARQUIVO ANTERIOR (da conversa):\n`;
+                                attachmentContext += `Nome: ${fullAttachment.name}\n`;
+                                attachmentContext += `--- INÍCIO DO ARQUIVO ---\n`;
+                                attachmentContext += fullAttachment.content.substring(0, 10000); // Limita a 10KB
+                                attachmentContext += `\n--- FIM DO ARQUIVO ---\n`;
+                                attachmentCount++;
+                            }
+                        }
+                    }
+                }
+                
+                return attachmentContext;
+            }
+
             // ==================== API E GERENCIAMENTO ====================
-            async function requestAIResponse(text, messageIndex) {
+            async function requestAIResponse(text, messageIndex, attachments = []) {
                 if (appState.isGenerating) return;
                 appState.isGenerating = true;
                 sendBtn.disabled = true;
@@ -1847,21 +2438,47 @@
                 if (!conv) return;
                 
                 let isNewMessage = false;
+                let userMessage = null;
 
                 if (messageIndex === undefined || !conv.messages[messageIndex]) {
-                    conv.messages.push({
+                    userMessage = {
                         id: generateId(),
                         role: 'user',
                         content: text,
                         timestamp: new Date().toISOString(),
-                    });
+                        attachments: attachments.filter(a => a.status === 'ready').map(a => ({
+                            id: a.id,
+                            name: a.name,
+                            type: a.type,
+                            size: a.size,
+                        })),
+                    };
+                    
+                    conv.messages.push(userMessage);
                     if (conv.messages.length === 1) {
-                        conv.title = generateTitle(text);
+                        conv.title = generateTitle(text || attachments[0]?.name || 'Nova conversa');
                     }
                     conv.updatedAt = new Date().toISOString();
                     saveConversations();
+                    
+                    // Salva os anexos no IndexedDB
+                    for (const att of attachments) {
+                        if (att.status === 'ready') {
+                            await saveAttachmentToDB({
+                                ...att,
+                                conversationId: conv.id,
+                                messageId: userMessage.id,
+                            });
+                        }
+                    }
+                    
+                    // Limpa os anexos pendentes
+                    clearPendingAttachments();
+                    
                     renderChat();
                     isNewMessage = true;
+                } else {
+                    userMessage = conv.messages[messageIndex];
                 }
                 
                 const typingDiv = document.createElement('div');
@@ -1917,10 +2534,25 @@
                                         "Instrução: Use o contexto acima APENAS para compreender as referências da MENSAGEM ATUAL. Responda APENAS à MENSAGEM ATUAL mantendo exatamente a sua personalidade.\n\n";
                     }
                 }
-
-                const finalPrompt = basePrompt + "\n\n" + contextString;
                 
-                const url = `https://api.skylen.my.id/api/luminai?text=${encodeURIComponent(text)}&prompt=${encodeURIComponent(finalPrompt)}`;
+                // Adiciona contexto dos anexos atuais
+                const attachmentContext = buildAttachmentContext(attachments);
+                
+                // Adiciona contexto de anexos recentes (se não houver anexos na mensagem atual)
+                let recentAttachmentContext = '';
+                if (!attachmentContext && userMessage.id) {
+                    recentAttachmentContext = getRecentAttachmentsContext(userMessage.id);
+                }
+
+                const finalPrompt = basePrompt + "\n\n" + contextString + recentAttachmentContext;
+                
+                // Prepara o texto final para a API
+                let finalText = text;
+                if (attachmentContext) {
+                    finalText = text + attachmentContext;
+                }
+                
+                const url = `https://api.skylen.my.id/api/luminai?text=${encodeURIComponent(finalText)}&prompt=${encodeURIComponent(finalPrompt)}`;
                 
                 try {
                     const controller = new AbortController();
@@ -2032,17 +2664,16 @@
                 $('#setting-animations').value = s.animations;
                 $('#setting-performance').value = s.performance;
                 applyColors(); 
-                updateUIAvatar(); // Força a atualização do preview na tela
+                updateUIAvatar();
             }
 
             function setupSettingsListeners() {
                 $('#setting-ai-name').addEventListener('input', (e) => { appState.settings.aiName = e.target.value || 'Lumi'; updateUIName(); saveSettings(); });
                 $('#setting-prompt').addEventListener('change', (e) => { appState.settings.prompt = e.target.value || LUMI_DEFAULT_PROMPT; saveSettings(); showToast('Personalidade atualizada', 'success'); });
                 
-                // Comportamento do Avatar com as regras de precedência
                 $('#setting-avatar-url').addEventListener('input', (e) => { 
                     appState.settings.avatarUrl = e.target.value; 
-                    appState.settings.avatarDataUrl = ''; // Limpa envio local
+                    appState.settings.avatarDataUrl = ''; 
                     updateUIAvatar(); 
                     saveSettings(); 
                 });
@@ -2052,7 +2683,7 @@
                         const reader = new FileReader();
                         reader.onload = (ev) => { 
                             appState.settings.avatarDataUrl = ev.target.result; 
-                            appState.settings.avatarUrl = ''; // Limpa URL customizada
+                            appState.settings.avatarUrl = ''; 
                             $('#setting-avatar-url').value = ''; 
                             updateUIAvatar(); 
                             saveSettings(); 
@@ -2299,6 +2930,24 @@
                 $('#settings-btn').addEventListener('click', openSettings);
                 $('#settings-close').addEventListener('click', closeSettings);
                 
+                // Event listeners do sistema de anexos
+                attachBtn.addEventListener('click', toggleAttachmentMenu);
+                menuFiles.addEventListener('click', openFilePicker);
+                fileInput.addEventListener('change', async (e) => {
+                    const files = e.target.files;
+                    if (files.length > 0) {
+                        await handleFileSelection(files);
+                        fileInput.value = '';
+                    }
+                });
+                
+                // Fechar menu de anexos ao clicar fora
+                document.addEventListener('click', (e) => {
+                    if (!attachmentMenu.contains(e.target) && e.target !== attachBtn && !attachBtn.contains(e.target)) {
+                        closeAttachmentMenu();
+                    }
+                });
+                
                 let inputTicking = false;
                 inputEl.addEventListener('input', () => {
                     if (!inputTicking) {
@@ -2362,7 +3011,7 @@
                 searchInput.addEventListener('input', (e) => { renderSidebar(e.target.value); });
                 
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') { closeSidebar(); closeSettings(); }
+                    if (e.key === 'Escape') { closeSidebar(); closeSettings(); closeAttachmentMenu(); }
                     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSidebar(); searchInput.focus(); }
                 });
                 
@@ -2373,24 +3022,79 @@
                 }, { passive: false });
             }
 
+            async function handleFileSelection(files) {
+                const fileArray = Array.from(files);
+                
+                // Verifica o tamanho total
+                let totalSize = 0;
+                fileArray.forEach(f => totalSize += f.size);
+                
+                if (totalSize > MAX_TOTAL_ATTACHMENT_SIZE) {
+                    showToast('Tamanho total dos arquivos excede 20MB', 'error');
+                    return;
+                }
+                
+                // Processa cada arquivo
+                for (const file of fileArray) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        showToast(`${file.name} excede 10MB`, 'error');
+                        continue;
+                    }
+                    
+                    await prepareAttachment(file);
+                }
+                
+                // Verifica se todos os arquivos estão prontos
+                const hasErrors = appState.pendingAttachments.some(a => a.status === 'error');
+                if (hasErrors) {
+                    const errorAtt = appState.pendingAttachments.find(a => a.status === 'error');
+                    if (errorAtt && errorAtt.type === 'binary') {
+                        showToast('Este tipo de arquivo ainda não é compatível. Por enquanto, a Lumi consegue analisar arquivos de texto, código, JSON, HTML e PDF.', 'error');
+                    }
+                }
+            }
+
             function sendMessage() {
                 const text = inputEl.value.trim();
-                if (!text || appState.isGenerating) return;
+                const hasAttachments = appState.pendingAttachments.length > 0;
+                const hasProcessingAttachments = appState.pendingAttachments.some(a => a.status === 'processing' || a.status === 'reading');
+                
+                if (!text && !hasAttachments) return;
+                if (hasProcessingAttachments) {
+                    showToast('Aguarde o processamento dos arquivos', 'info');
+                    return;
+                }
+                if (appState.isGenerating) return;
                 
                 let conv = getCurrentConversation();
                 if (!conv) { conv = createConversation(); }
                 
+                // Filtra apenas anexos prontos
+                const readyAttachments = appState.pendingAttachments.filter(a => a.status === 'ready');
+                
                 inputEl.value = '';
                 inputEl.style.height = 'auto';
                 
-                requestAIResponse(text);
+                requestAIResponse(text, undefined, readyAttachments);
             }
 
             // ==================== INIT ====================
-            function init() {
+            async function init() {
                 loadSettings();
                 loadConversations();
                 applyAllSettings();
+                
+                // Inicializa o IndexedDB
+                try {
+                    await initAttachmentsDB();
+                } catch (error) {
+                    console.warn('IndexedDB não disponível:', error);
+                }
+                
+                // Configura o PDF.js
+                if (window.pdfjsLib) {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
                 
                 if (appState.conversations.length === 0) {
                     createConversation();
@@ -2419,4 +3123,4 @@
         })();
     </script>
 </body>
-</html>
+    </html>
